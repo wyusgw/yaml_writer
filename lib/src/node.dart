@@ -151,6 +151,25 @@ class StringNode extends Node {
   ///
   static bool isValidUnquotedString(String s) =>
       !_invalidCharsRegex.hasMatch(s);
+
+  /// Quotes a map key if needed, using the same rules as [toYaml].
+  /// Unlike values, keys are only quoted when [isValidUnquotedString] returns false.
+  static String quoteKey(String key, YamlContext context) {
+    if (key.isEmpty) {
+      final quote = context.config.quoteStyle.char;
+      return "$quote$quote";
+    }
+    if (isValidUnquotedString(key)) {
+      return key;
+    }
+    switch (context.config.quoteStyle) {
+      case QuoteStyle.singleQuote:
+        return "'${key.replaceAll("'", "''")}'";
+      case QuoteStyle.doubleQuote:
+        final escaped = key.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+        return '"$escaped"';
+    }
+  }
 }
 
 class ListNode extends Node {
@@ -202,7 +221,7 @@ class MapNode extends Node {
     final List<String> lines = [];
 
     for (final entry in subnodesMap.entries) {
-      final key = entry.key;
+      final key = StringNode.quoteKey(entry.key, context);
       final node = entry.value;
 
       final nodeYaml = node.toYaml(context);
